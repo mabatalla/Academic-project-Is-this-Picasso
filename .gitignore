@@ -127,3 +127,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Custom files to ignore
+.idea**
+.idea/
+.vscode**
+.vscode/
+Enunciado.ipynb
