@@ -43,12 +43,16 @@ def color_quant(image, bins, num_of_colors=10, show_chart=True):
     hex_colors = [rgb_to_hex(ordered_colors[i]).upper() for i in counts.keys()]
 
     if (show_chart):
+        # Inform user
+        print('Colors found:')
+        
         plt.figure(figsize=(10, 10))
         plt.pie(counts.values(),
                 labels=hex_colors,
                 colors=hex_colors)
-    
-    return [hex_col.lstrip('#') for hex_col in hex_colors] #hex_colors #rgb_colors
+        
+    # return rgb_colors
+    return {hex_col: hex_col for hex_col in hex_colors}
 
 # Transform HEX index to RGB index
 def hex_to_rgb(color):
@@ -115,7 +119,7 @@ def process_color(channel_value, bins):
     return processed_value
 
 # To map all pixels of an image to a reduced palette
-def reduce_col_palette(image, bins):
+def reduce_col_palette(image, bins, info=False):
     '''
     This function iterate through every pixel of an image to map
     each rgb channel color value to a reduced palette.
@@ -132,7 +136,8 @@ def reduce_col_palette(image, bins):
     # Restore image shape
     img = np.reshape(img, image.shape)
         
-    # Inform user   
-    print(f'Palette reduced to {bins**3} colors.')
+    # Inform user
+    if info:
+        print(f'Palette reduced to {bins**3} colors.')
             
     return img
