@@ -1,9 +1,13 @@
 # IMPORTS
 import cv2
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 import numpy as np
+import os
 
 from collections import Counter
+from collections.abc import Iterable
+from mpl_toolkits.axes_grid1 import ImageGrid
 from sklearn.cluster import KMeans
 
 
@@ -52,7 +56,25 @@ def color_quant(image, bins, num_of_colors=10, show_chart=True):
                 colors=hex_colors)
         
     # return rgb_colors
-    return {hex_col: hex_col for hex_col in hex_colors}
+    return hex_colors, {hex_col: hex_col for hex_col in hex_colors}
+
+# To determine the bw ratio
+def chiaroscuro(image):
+    w = 0
+    b = 0
+
+    for h in range(image.shape[0]):
+        for w in range(image.shape[1]):
+            if (image[h][w] == 255).all():
+                w+=1
+            elif (image[h][w] == 0).all():
+                b+=1
+            else:
+                continue
+        
+    chiaroscuro = (w/b)*100
+    
+    return chiaroscuro
 
 # Transform HEX index to RGB index
 def hex_to_rgb(color):
@@ -60,6 +82,13 @@ def hex_to_rgb(color):
     for i in (0, 2, 4): color = tuple(int(c[i: i+2], 16))
     
     return color
+
+# To easily add each data in item to the correct list in lists
+def item_to_lists(item, lists):
+    for i in range(len(item)):
+        lists[i].append(item[i])
+        
+    return lists
 
 # To determine the filling_ratio
 def fill_ratio(image):
@@ -77,6 +106,30 @@ def fill_ratio(image):
     
     return filling_ratio
 
+# To get all paths to valid images
+def get_collection(working_path: str='', extensions: list=[]):
+    '''
+    This function will generate a list will all the paths of archives found
+    in the selected working directory that have a valid extension.
+    '''
+    
+    # Locate path and get all candidates path
+    candidates = os.listdir(working_path)
+    ### TODO - Get files in subfolders
+
+    # Declare an empty list to append valid files path found iterating candidates
+    collection = []
+    valid_extension = extensions
+
+    for file in candidates:
+        # Check if image has a valid extension
+        file_ext = os.path.splitext(file)[1]
+        
+        if file_ext.lower() in valid_extension: collection.append(file)
+        else: continue
+        
+    return working_path, collection
+
 # To import image in RGB mode
 def get_img_rgb(image_path):
     '''
@@ -89,6 +142,15 @@ def get_img_rgb(image_path):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     
     return image
+
+# For quick empty list assignment
+def mklist(n):
+    for i in range(n):
+        yield []
+        
+# To return the name of an object
+def nameof(obj, namespace):
+    return [name for name in namespace if namespace[name] is obj][0]
 
 # To resize keeping ratio
 def resize_img(image, height):
@@ -141,3 +203,24 @@ def reduce_col_palette(image, bins, info=False):
         print(f'Palette reduced to {bins**3} colors.')
             
     return img
+
+# To show all images from a collection
+def show_collection(path, collection):
+    fig = plt.figure(figsize=(20, 20))
+    grid = ImageGrid(fig,
+                    111,
+                    nrows_ncols=((len(collection)//4)+1, 4),
+                    axes_pad=0.1)
+
+    for ax, im in zip(grid, collection):
+        
+        img_path = path + im
+        image = mpimg.imread(img_path)
+        image_res = resize_img(image, 50)
+        
+        # Iterating over the grid returns the Axes.
+        ax.imshow(image_res)
+
+    plt.show()
+            
+    return None
