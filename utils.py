@@ -7,6 +7,7 @@ import os
 
 from collections import Counter
 from collections.abc import Iterable
+from matplotlib.patches import Rectangle
 from mpl_toolkits.axes_grid1 import ImageGrid
 from sklearn.cluster import KMeans
 
@@ -47,13 +48,20 @@ def color_quant(image, bins, num_of_colors=10, show_chart=True):
     hex_colors = [rgb_to_hex(ordered_colors[i]).upper() for i in counts.keys()]
 
     if (show_chart):
-        # Inform user
-        print('Colors found:')
+        # # Inform user
+        # print('Colors found:')
         
-        plt.figure(figsize=(10, 10))
-        plt.pie(counts.values(),
-                labels=hex_colors,
-                colors=hex_colors)
+        # plt.figure(figsize=(10, 10))
+        # plt.pie(counts.values(),
+        #         labels=hex_colors,
+        #         colors=hex_colors)
+        
+        plot_colors({hex_col: hex_col for hex_col in hex_colors},
+                    'Colors found',
+                    sort_colors=True,
+                    emptycols=1)
+
+        plt.show()
         
     # return rgb_colors
     return hex_colors, {hex_col: hex_col for hex_col in hex_colors}
@@ -218,6 +226,69 @@ def resize_img(image, height):
 def rgb_to_hex(color):
     
     return f'#{int(color[0]):02x}{int(color[1]):02x}{int(color[2]):02x}'
+
+# To plot colors found in an image
+def plot_colors(colors, title, sort_colors=False, emptycols=0):
+    cell_width = 200
+    cell_height = 50
+    swatch_width = 100
+    margin = 12
+    topmargin = 40
+
+    ### TODO - Sort colors by RGB index
+        
+    names = list(colors)
+    
+    n = len(names)
+    ncols = 4 - emptycols
+    nrows = n // ncols + int(n % ncols > 0)
+
+    width = cell_width * 4 + 2 * margin
+    height = cell_height * nrows + margin + topmargin
+    dpi = 72
+
+    fig, ax = plt.subplots(figsize=(width / dpi, height / dpi), dpi=dpi)
+    fig.subplots_adjust(margin/width, 
+                        margin/height,
+                        (width-margin)/width,
+                        (height-topmargin)/height)
+    
+    ax.set_xlim(0, cell_width * 4)
+    ax.set_ylim(cell_height * (nrows),
+                -cell_height/2.)
+    
+    ax.yaxis.set_visible(False)
+    ax.xaxis.set_visible(False)
+    
+    ax.set_axis_off()
+    
+    ax.set_title(title,
+                 fontsize=24,
+                 loc="left",
+                 pad=10)
+
+    for i, name in enumerate(names):
+        row = i % nrows
+        col = i // nrows
+        y = row * cell_height
+
+        swatch_start_x = cell_width * col
+        text_pos_x = cell_width * col + swatch_width + 7
+
+        ax.text(text_pos_x,
+                y+(cell_height/4),
+                name,
+                fontsize=14,
+                horizontalalignment='left',
+                verticalalignment='center')
+
+        ax.add_patch(Rectangle(xy=(swatch_start_x, y-9),
+                               width=swatch_width,
+                               height=40,
+                               facecolor=colors[name],
+                               edgecolor='0.5'))
+
+    return fig
 
 # To map a rgb channel color value to a reduced palette
 def process_color(channel_value, bins):
