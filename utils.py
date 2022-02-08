@@ -58,6 +58,23 @@ def color_quant(image, bins, num_of_colors=10, show_chart=True):
     # return rgb_colors
     return hex_colors, {hex_col: hex_col for hex_col in hex_colors}
 
+# To crop image to a square shape
+def crop_img(image):    
+    img_h_saxis = image.shape[0]//2
+    img_w_saxis = image.shape[1]//2
+    crop_saxis = None
+
+    if img_h_saxis <= img_w_saxis:
+        crop_saxis = img_h_saxis
+    else:
+        crop_saxis = img_w_saxis
+
+    center = (img_h_saxis, img_w_saxis)
+    cropped_img = image[(center[0]-crop_saxis): (center[0]+ crop_saxis),
+                        (center[1]-crop_saxis): (center[1]+ crop_saxis)]
+
+    return cropped_img
+
 # To determine the bw ratio
 def chiaroscuro(image):
     w = 0
@@ -72,9 +89,47 @@ def chiaroscuro(image):
             else:
                 continue
         
-    chiaroscuro = (w/b)*100
+    chiaroscuro = (w/b)
     
     return chiaroscuro
+
+# To extract data from every image in a collection
+def extract_img_data(path, img_collection, data_collection, target_class):
+    img_errors = 0
+    img_errors_log = []
+    
+    for i in range(len(img_collection)):
+        # Get image and resize
+        img_path = path + img_collection[i]
+        img = get_img_rgb(img_path)
+        
+        # Resize and reduce color palette to 125 colors
+        img = resize_img(img, 100)
+        img = reduce_col_palette(img, 5)
+        
+        # Extract data of each image
+        try:
+            img_name = img_collection[i].split(sep='.')[0]
+            img_ratio = round(round((img.shape[0] / img.shape[1]) * 2, ndigits=2) / 2, ndigits=5)
+            img_colors, img_palette = color_quant(img, 5, num_of_colors=10, show_chart=False)
+            img_fill = round(fill_ratio(img), ndigits=5)
+            img_chi_osc = round(chiaroscuro(img), ndigits=5)
+            
+        except:
+            img_errors += 1
+            img_errors_log.append(img_collection[i])
+            continue
+         
+        # Generate flat list with all the data   
+        img_data = [img_name, target_class, img_ratio, img_fill, img_chi_osc]
+                
+        for i in range(len(img_colors)):
+            img_data.append(img_colors[i])
+        
+        # Add img_data to features_list
+        item_to_lists(img_data, data_collection)
+        
+    return img_errors, img_errors_log
 
 # Transform HEX index to RGB index
 def hex_to_rgb(color):
@@ -205,11 +260,11 @@ def reduce_col_palette(image, bins, info=False):
     return img
 
 # To show all images from a collection
-def show_collection(path, collection):
+def show_collection(path, collection, cols):
     fig = plt.figure(figsize=(20, 20))
     grid = ImageGrid(fig,
                     111,
-                    nrows_ncols=((len(collection)//4)+1, 4),
+                    nrows_ncols=((len(collection)//cols)+1, cols),
                     axes_pad=0.1)
 
     for ax, im in zip(grid, collection):
