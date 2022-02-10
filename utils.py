@@ -1,5 +1,6 @@
 # IMPORTS
 import csv
+from email import message
 import cv2
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
@@ -185,8 +186,11 @@ def extract_img_data(img_collection,
             writer = csv.writer(datafile)            
             writer.writerows(data_collection)
             
-    print(f'{errors} errors raised from {len(img_collection)} pictures ' + 
-            f'in {target_class} collection.')
+    # Inform user
+    message = f'{errors} errors raised from {len(img_collection)} pictures in {target_class} collection.'
+    
+    print(message)
+    errors_log.append(message)
         
     return data_collection, errors_log
 
@@ -397,6 +401,6 @@ def whitespace(image):
             else:
                 non_w+=1
         
-    whitespace_ratio = (non_w*100)/(image.shape[0]*image.shape[1])
+    whitespace_ratio = (w*100)/(image.shape[0]*image.shape[1])
     
     return whitespace_ratio
