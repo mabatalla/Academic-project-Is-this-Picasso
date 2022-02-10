@@ -1,20 +1,23 @@
 # IMPORTS
+import csv
 import cv2
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import numpy as np
 import os
+import pathlib
 
 from collections import Counter
 from collections.abc import Iterable
 from matplotlib.patches import Rectangle
 from mpl_toolkits.axes_grid1 import ImageGrid
 from sklearn.cluster import KMeans
+from typing import Collection
 
 
 # FUNCS
 # To extract colors from image
-def color_quant(image, bins, num_of_colors=10, show_chart=True):
+def color_quant(image, bins=5, num_of_colors=10, show_chart=True):
     '''
     This function applies a color quantization based on cv2.kmeans function
     as described in the OpenCV docs to reduce the colors present in an image.
@@ -84,17 +87,17 @@ def crop_img(image):
     return cropped_img
 
 # To determine the bw ratio
-def chiaroscuro(image):
-    w = 0
+def chi_osc(image):
     b = 0
+    w = 0
 
     for h in range(image.shape[0]):
         for w in range(image.shape[1]):
-            if (image[h][w] == 255).all():
-                w+=1
-            elif (image[h][w] == 0).all():
+            if (image[h][w] == 0).all():
                 b+=1
-            else:
+            elif (image[h][w] == 255).all():
+                w+=1
+            else: 
                 continue
         
     chiaroscuro = (w/b)
@@ -102,42 +105,90 @@ def chiaroscuro(image):
     return chiaroscuro
 
 # To extract data from every image in a collection
-def extract_img_data(path, img_collection, data_collection, target_class):
-    img_errors = 0
-    img_errors_log = []
+def extract_img_data(img_collection,
+                     square=False,
+                     resize=True,
+                     height=100,
+                     limit_colors=True,
+                     colors_per_channel=5,
+                     target_class='',
+                     save=False,
+                     save_path=''):
+
+    data_collection = []
     
-    for i in range(len(img_collection)):
-        # Get image and resize
-        img_path = path + img_collection[i]
-        img = get_img_rgb(img_path)
+    errors = 0
+    errors_log = []
+
+    if save:
+        origin = os.getcwd()
         
-        # Resize and reduce color palette to 125 colors
-        img = resize_img(img, 100)
-        img = reduce_col_palette(img, 5)
+        # Create new folder in save_path
+        os.chdir(save_path)
+        os.mkdir(target_class)
         
-        # Extract data of each image
-        try:
-            img_name = img_collection[i].split(sep='.')[0]
-            img_ratio = round(round((img.shape[0] / img.shape[1]) * 2, ndigits=2) / 2, ndigits=5)
-            img_colors, img_palette = color_quant(img, 5, num_of_colors=10, show_chart=False)
-            img_fill = round(fill_ratio(img), ndigits=5)
-            img_chi_osc = round(chiaroscuro(img), ndigits=5)
-            
-        except:
-            img_errors += 1
-            img_errors_log.append(img_collection[i])
-            continue
-         
-        # Generate flat list with all the data   
-        img_data = [img_name, target_class, img_ratio, img_fill, img_chi_osc]
+        # Go back to working path
+        os.chdir(origin)
+    
+    for work in img_collection:
+        work = str(work)
+        
+        # Get image
+        img = get_img_rgb(work)
+        
+        # Crop and resize image
+        if square: img = crop_img(img)
+        if resize: img = resize_img(img, height)
                 
-        for i in range(len(img_colors)):
-            img_data.append(img_colors[i])
+        # Extract basic data
+        img_name = work.split(sep='/')[-1].split(sep='.')[0]
         
-        # Add img_data to features_list
-        item_to_lists(img_data, data_collection)
+        img_data = [img_name, target_class, img.shape[0], img.shape[1]]
+    
+        # Reduce color palette to set colors_per_channel and extract colors
+        if limit_colors:
+            try:
+                img = reduce_col_palette(img,
+                                         colors_per_channel)
+                img_colors, img_palette = color_quant(img,
+                                         bins=5,
+                                         num_of_colors=10,
+                                         show_chart=False)
+                
+                # Expand img_data with color cluster information
+                img_data.append(round(whitespace(img), ndigits=5))
+                img_data.append(round(chi_osc(img), ndigits=5))
+                for i in range(len(img_colors)):
+                    img_data.append(img_colors[i])
+                
+            except:
+                errors += 1
+                errors_log.append(work)
+                continue
         
-    return img_errors, img_errors_log
+        # Add img_data to data_collection            
+        data_collection.append(img_data)
+        
+        # Save image
+        if save:
+            filename = work.split(sep='/')[-1]
+            
+            # Revert img to BGR before saving
+            img_to_save = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            
+            # Save image
+            cv2.imwrite(f'{save_path}/{target_class}/{filename}', img_to_save)
+    
+    # Save img_data
+    if save:
+        with open(f'{save_path}/{target_class}/{target_class}.csv', "w", newline="") as datafile:
+            writer = csv.writer(datafile)            
+            writer.writerows(data_collection)
+            
+    print(f'{errors} errors raised from {len(img_collection)} pictures ' + 
+            f'in {target_class} collection.')
+        
+    return data_collection, errors_log
 
 # Transform HEX index to RGB index
 def hex_to_rgb(color):
@@ -153,45 +204,28 @@ def item_to_lists(item, lists):
         
     return lists
 
-# To determine the filling_ratio
-def fill_ratio(image):
-    w = 0
-    non_w = 0
-
-    for h in range(image.shape[0]):
-        for w in range(image.shape[1]):
-            if (image[h][w] == 255).all():
-                w+=1
-            else:
-                non_w+=1
-        
-    filling_ratio = (non_w*100)/(image.shape[0]*image.shape[1])
-    
-    return filling_ratio
-
 # To get all paths to valid images
-def get_collection(working_path: str='', extensions: list=[]):
+def get_collection(path, extensions=[]):
     '''
     This function will generate a list will all the paths of archives found
     in the selected working directory that have a valid extension.
     '''
     
-    # Locate path and get all candidates path
-    candidates = os.listdir(working_path)
-    ### TODO - Get files in subfolders
-
-    # Declare an empty list to append valid files path found iterating candidates
+    # Declare an empty list to append valid files path
     collection = []
-    valid_extension = extensions
-
-    for file in candidates:
-        # Check if image has a valid extension
-        file_ext = os.path.splitext(file)[1]
+    
+    # Iterate through the files tree from path
+    for path, folders, files in os.walk(path):
+        # If image has a valid extension append path to collection
+        for name in files:   
+            file_ext = os.path.splitext(name)[1]
+            
+            if file_ext.lower() in extensions:
+                collection.append(pathlib.PurePath(path, name))
+            else:
+                continue
         
-        if file_ext.lower() in valid_extension: collection.append(file)
-        else: continue
-        
-    return working_path, collection
+    return collection
 
 # To import image in RGB mode
 def get_img_rgb(image_path):
@@ -215,10 +249,10 @@ def mklist(n):
 def nameof(obj, namespace):
     return [name for name in namespace if namespace[name] is obj][0]
 
-# To resize keeping ratio
+# To resize img keeping ratio
 def resize_img(image, height):
     ratio = image.shape[0]/image.shape[1]
-    width = int(height / ratio)
+    width = int(height/ratio)
      
     return cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
 
@@ -331,22 +365,38 @@ def reduce_col_palette(image, bins, info=False):
     return img
 
 # To show all images from a collection
-def show_collection(path, collection, cols):
+def show_collection(collection, cols: int=5):
     fig = plt.figure(figsize=(20, 20))
     grid = ImageGrid(fig,
                     111,
                     nrows_ncols=((len(collection)//cols)+1, cols),
-                    axes_pad=0.1)
+                    axes_pad=0.5)
 
-    for ax, im in zip(grid, collection):
+    for ax, work in zip(grid, collection):
+        img_name = str(work).split(sep='/')[-1].split(sep='.')[0]
+        ax.set_title(img_name)
         
-        img_path = path + im
-        image = mpimg.imread(img_path)
-        image_res = resize_img(image, 50)
+        img = mpimg.imread(str(work))
+        img_res = resize_img(img, 50)
         
-        # Iterating over the grid returns the Axes.
-        ax.imshow(image_res)
+        ax.imshow(img_res)
 
     plt.show()
             
     return None
+
+# To determine the filling_ratio
+def whitespace(image):
+    w = 0
+    non_w = 0
+
+    for h in range(image.shape[0]):
+        for w in range(image.shape[1]):
+            if (image[h][w] == 255).all():
+                w+=1
+            else:
+                non_w+=1
+        
+    whitespace_ratio = (non_w*100)/(image.shape[0]*image.shape[1])
+    
+    return whitespace_ratio
