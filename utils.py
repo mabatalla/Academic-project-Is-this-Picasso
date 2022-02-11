@@ -116,7 +116,7 @@ def extract_img_data(img_collection,
                      save=False,
                      save_path=''):
 
-    data_collection = []
+    collection_data = []
     
     errors = 0
     errors_log = []
@@ -134,57 +134,58 @@ def extract_img_data(img_collection,
     for work in img_collection:
         work = str(work)
         
-        # Get image
-        img = get_img_rgb(work)
-        
-        # Crop and resize image
-        if square: img = crop_img(img)
-        if resize: img = resize_img(img, height)
-                
-        # Extract basic data
-        img_name = work.split(sep='/')[-1].split(sep='.')[0]
-        
-        img_data = [img_name, target_class, img.shape[0], img.shape[1]]
-    
-        # Reduce color palette to set colors_per_channel and extract colors
-        if limit_colors:
-            try:
-                img = reduce_col_palette(img,
-                                         colors_per_channel)
-                img_colors, img_palette = color_quant(img,
-                                         bins=5,
-                                         num_of_colors=10,
-                                         show_chart=False)
-                
-                # Expand img_data with color cluster information
-                img_data.append(round(whitespace(img), ndigits=5))
-                img_data.append(round(chi_osc(img), ndigits=5))
-                for i in range(len(img_colors)):
-                    img_data.append(img_colors[i])
-                
-            except:
-                errors += 1
-                errors_log.append(work)
-                continue
-        
-        # Add img_data to data_collection            
-        data_collection.append(img_data)
-        
-        # Save image
-        if save:
-            filename = work.split(sep='/')[-1]
+        try:
+            # Get image
+            img = get_img_rgb(work)
             
-            # Revert img to BGR before saving
-            img_to_save = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            # Crop and resize image
+            if square: img = crop_img(img)
+            if resize: img = resize_img(img, height)
+                    
+            # Extract basic data
+            img_name = work.split(sep='/')[-1].split(sep='.')[0]
+            
+            img_data = [img_name, target_class, img.shape[0], img.shape[1]]
+        
+            # Reduce color palette to set colors_per_channel and extract colors
+            if limit_colors:
+                    img = reduce_col_palette(img,
+                                            colors_per_channel)
+                    img_colors, img_palette = color_quant(img,
+                                            bins=5,
+                                            num_of_colors=10,
+                                            show_chart=False)
+                    
+                    # Expand img_data with color cluster information
+                    img_data.append(round(whitespace(img), ndigits=5))
+                    img_data.append(round(chi_osc(img), ndigits=5))
+                    for i in range(len(img_colors)):
+                        img_data.append(img_colors[i])
+                    
+            
+            # Add img_data to collection_data            
+            collection_data.append(img_data)
             
             # Save image
-            cv2.imwrite(f'{save_path}/{target_class}/{filename}', img_to_save)
+            if save:
+                filename = work.split(sep='/')[-1]
+                
+                # Revert img to BGR before saving
+                img_to_save = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                
+                # Save image
+                cv2.imwrite(f'{save_path}/{target_class}/{filename}', img_to_save)
+                
+        except:
+            errors += 1
+            errors_log.append(work)
+            continue
     
-    # Save img_data
+    # Save collection data
     if save:
         with open(f'{save_path}/{target_class}/{target_class}.csv', "w", newline="") as datafile:
             writer = csv.writer(datafile)            
-            writer.writerows(data_collection)
+            writer.writerows(collection_data)
             
     # Inform user
     message = f'{errors} errors raised from {len(img_collection)} pictures in {target_class} collection.'
@@ -192,7 +193,7 @@ def extract_img_data(img_collection,
     print(message)
     errors_log.append(message)
         
-    return data_collection, errors_log
+    return collection_data, errors_log
 
 # Transform HEX index to RGB index
 def hex_to_rgb(color):
