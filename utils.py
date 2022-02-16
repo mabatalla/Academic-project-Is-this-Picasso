@@ -105,6 +105,30 @@ def chi_osc(image):
     
     return chiaroscuro
 
+# To extract missings, unique and cardinality of a pd.DataFrame
+def data_report(df):
+    # Get names
+    cols = pd.DataFrame(df.columns.values, columns=['COL_N'])
+    # Get types
+    types = pd.DataFrame(df.dtypes.values, columns=["DATA_TYPE"])
+    
+    # Get missings
+    percent_missing = round(df.isnull().sum()*100/len(df),2)
+    percent_missing_df = pd.DataFrame(percent_missing.values, columns = ["MISSINGS (%)"])
+
+    # Get unique values
+    unicos = pd.DataFrame(df.nunique().values, columns = ["UNIQUE_VALUES"])
+
+    # Get cardinality
+    percent_cardin = round(unicos["UNIQUE_VALUES"]*100/len(df),2)
+    percent_cardin_df = pd.DataFrame(percent_cardin.values, columns = ["CARDIN (%)"])
+      
+    # Concat
+    concatenado = pd.concat([cols, types, percent_missing_df, unicos, percent_cardin_df], axis=1)
+    concatenado.set_index('COL_N', drop=True, inplace=True)
+
+    return concatenado.T
+
 # To extract data from every image in a collection
 def extract_img_data(img_collection,
                      square=False,
