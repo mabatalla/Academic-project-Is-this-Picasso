@@ -6,11 +6,26 @@ import matplotlib.image as mpimg
 import numpy as np
 import os
 import pathlib
+import seaborn as sns
 
 from collections import Counter
 from matplotlib.patches import Rectangle
 from mpl_toolkits.axes_grid1 import ImageGrid
 from sklearn.cluster import KMeans
+
+
+from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, mean_squared_error
+# Classification metrics
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score, roc_auc_score
+# Train/test
+from sklearn.model_selection import train_test_split
+# Regression
+from sklearn.linear_model import ElasticNet, Lasso, LinearRegression, LogisticRegression, Ridge
+# Preprocessing
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
+# Decision trees
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor, plot_tree
+
 
 
 # FUNCS
@@ -101,6 +116,27 @@ def chi_osc(image):
     chiaroscuro = (w/b)
     
     return chiaroscuro
+
+#
+def c_matrix_bin(y_test, preds):
+    conf_matrix = confusion_matrix(y_test, preds)
+    
+    _names = ['TN', 'FP', 'FN', 'TP']
+    _counts = ['{0:0.0f}'.format(value) for value in conf_matrix.flatten()]
+    _percentages = ['{0:.2%}'.format(value) for value in conf_matrix.flatten()/np.sum(conf_matrix)]
+    labels = [f'{v1}\n\n{v2}\n\n{v3}' for v1, v2, v3 in zip(_names, _counts, _percentages)]
+    labels = np.asarray(labels).reshape(2, 2)
+
+    sns.heatmap(conf_matrix/conf_matrix.sum(axis=1),
+                annot=labels, annot_kws={"size": 20},
+                fmt='',
+                square=True,
+                cmap='Blues', cbar=False)
+
+    plt.ylabel("ACTUAL", fontsize=15)
+    plt.xlabel("PREDICTED", fontsize=15)
+    
+    return conf_matrix
 
 # To extract missings, unique and cardinality of a pd.DataFrame
 def data_report(df):
