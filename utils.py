@@ -1,6 +1,5 @@
 # IMPORTS
 import csv
-from email import message
 import cv2
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
@@ -9,11 +8,9 @@ import os
 import pathlib
 
 from collections import Counter
-from collections.abc import Iterable
 from matplotlib.patches import Rectangle
 from mpl_toolkits.axes_grid1 import ImageGrid
 from sklearn.cluster import KMeans
-from typing import Collection
 
 
 # FUNCS
@@ -131,7 +128,7 @@ def data_report(df):
 
 # To extract data from every image in a collection
 def extract_img_data(img_collection,
-                     square=False,
+                     square_crop=False,
                      resize=True,
                      height=100,
                      limit_colors=True,
@@ -163,7 +160,7 @@ def extract_img_data(img_collection,
             img = get_img_rgb(work)
             
             # Crop and resize image
-            if square: img = crop_img(img)
+            if square_crop: img = crop_img(img)
             if resize: img = resize_img(img, height)
                     
             # Extract basic data
