@@ -60,12 +60,12 @@ for artist, data_collection, img_collection, errors_log in zip(artists, medium_d
     data_collection, errors_log = extract_img_data(img_collection,
                                                    square_crop=False,
                                                    resize=True,
-                                                   height=250,
+                                                   height=150,
                                                    limit_colors=True,
                                                    colors_per_channel=5,
                                                    target_class=artist,
                                                    save=True,
-                                                   save_path='./images/large_museum')
+                                                   save_path='./images/medium_museum')
     
     medium_museum.append(data_collection)
     

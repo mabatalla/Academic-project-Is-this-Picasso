@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import numpy as np
 import os
+import pandas as pd
 import pathlib
 import seaborn as sns
 
@@ -25,6 +26,8 @@ from sklearn.linear_model import ElasticNet, Lasso, LinearRegression, LogisticRe
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 # Decision trees
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor, plot_tree
+
+from skimage.io import imread
 
 
 
@@ -117,8 +120,10 @@ def chi_osc(image):
     
     return chiaroscuro
 
-#
-def c_matrix_bin(y_test, preds):
+# Prettier confusion matrix
+def c_matrix_bin(name, y_test, preds):
+    name = f'{name.upper()}'
+    
     conf_matrix = confusion_matrix(y_test, preds)
     
     _names = ['TN', 'FP', 'FN', 'TP']
@@ -133,8 +138,9 @@ def c_matrix_bin(y_test, preds):
                 square=True,
                 cmap='Blues', cbar=False)
 
-    plt.ylabel("ACTUAL", fontsize=15)
-    plt.xlabel("PREDICTED", fontsize=15)
+    plt.ylabel('ACTUAL', fontsize=15)
+    plt.xlabel('PREDICTED', fontsize=15)
+    plt.title(name, fontsize=25)
     
     return conf_matrix
 
@@ -259,6 +265,54 @@ def hex_to_rgb(color):
     
     return color
 
+# Get images, resize, shuffle train/test split and normalize
+def img_train_test_split(path='',
+                         extensions=[],
+                         test_percentage=20,
+                         px=50,
+                         norm=True,
+                         random_state=42):
+    # Fix seed for random selection
+    if random_state:
+        np.random.RandomState(random_state)
+    
+    # capture
+    files = get_collection(path, extensions=extensions)
+
+    # Turn paths into strins
+    files = [str(file) for file in files]
+        
+    # Train/test selection with test_percentage of the images
+    test_size = (len(files) * test_percentage) // 100
+    test_files = np.random.choice(files, size=test_size)
+
+    train_files = [file for file in files if file not in test_files]
+    
+    X_train = []
+    X_test = []
+
+    for train_file in train_files:
+        train_img = imread(train_file)
+        train_img_mini = cv2.resize(train_img, (px, px))
+       
+        X_train.append(train_img_mini)
+        
+    for test_file in test_files:
+        test_img = imread(test_file)
+        test_img_mini = cv2.resize(test_img, (px, px))
+        
+        X_test.append(test_img_mini)
+        
+    X_train = np.array(X_train)
+    X_test = np.array(X_test)
+    
+    # Normalize
+    if norm:
+        X_train = X_train / 255.0
+        X_test = X_test / 255.0
+        
+    return X_train, X_test
+
 # To easily add each data in item to the correct list in lists
 def item_to_lists(item, lists):
     for i in range(len(item)):
@@ -306,6 +360,35 @@ def get_img_rgb(image_path):
 def mklist(n):
     for i in range(n):
         yield []
+
+# To get model scoring for classification models
+def model_scoring_classification(name, model, x, y, set='test'):
+    name = f'{name.upper()} ({set} data)'
+    preds = model.predict(x)
+
+    metrics = pd.DataFrame({name: [f'{accuracy_score(y, preds):.10f}',
+                                   f'{precision_score(y, preds):.10f}',
+                                   f'{recall_score(y, preds):.10f}',
+                                   f'{f1_score(y, preds):.10f}',
+                                   f'{roc_auc_score(y, preds):.10f}']},
+                           index=[['Accuracy (TP + TN/TT)', 'Precision (TP/TP + FP)', 'Recall (TP/TP + FN)',
+                                   'F1 (har_mean Ac, Re)', 'ROC AUC']])
+
+    return metrics
+
+# To get model scoring for regression models
+def model_scoring_regression(name, model, x, y, set='test'):
+    name = f'{name.upper()} ({set} data)'
+    preds = model.predict(x)
+
+    metrics = pd.DataFrame({name: [f'{model.score(x, y):.10f}',
+                                   f'{mean_absolute_error(y, preds):.10f}',
+                                   f'{mean_absolute_percentage_error(y, preds):.10f}',
+                                   f'{mean_squared_error(y, preds):.10f}',
+                                   f'{np.sqrt(mean_squared_error(y, preds)):.10f}']},
+                           index=[['Score (R2 coef.)', 'MAE', 'MAPE', 'MSE', 'RMSE']])
+
+    return metrics
         
 # To return the name of an object
 def nameof(obj, namespace):
