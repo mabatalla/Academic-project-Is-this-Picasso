@@ -12,23 +12,10 @@ import seaborn as sns
 from collections import Counter
 from matplotlib.patches import Rectangle
 from mpl_toolkits.axes_grid1 import ImageGrid
-from sklearn.cluster import KMeans
-
-
-from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, mean_squared_error
-# Classification metrics
-from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score, roc_auc_score
-# Train/test
-from sklearn.model_selection import train_test_split
-# Regression
-from sklearn.linear_model import ElasticNet, Lasso, LinearRegression, LogisticRegression, Ridge
-# Preprocessing
-from sklearn.preprocessing import PolynomialFeatures, StandardScaler
-# Decision trees
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor, plot_tree
-
 from skimage.io import imread
-
+from sklearn.cluster import KMeans
+from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, mean_squared_error
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score, roc_auc_score
 
 
 # FUNCS
